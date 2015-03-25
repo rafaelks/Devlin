@@ -27,8 +27,8 @@
 
  README
 
-    TODO: Comment about what's the application purpose.
-
+    This program will simulate how a basic computer works, with pre-allocated
+    processes and also how many time (in seconds) each CPU time will last.
  */
 
 
@@ -49,7 +49,10 @@
 #define kIOPrinterTimeMax 600
 
 
-// TODO: Comment about it.
+/**
+ IO devices
+ Hard Drive, Video Drive & Printer.
+ */
 enum io_devices {
     kIODeviceNone = 0,
     kIODeviceHardDrive = 1,
@@ -58,7 +61,15 @@ enum io_devices {
 };
 
 
-// TODO: Comment about it.
+/**
+ Process states
+ 
+ - Creating: When process is being created.
+ - Ready: It's ready to be executed, on queue.
+ - Running: Process it's actually running.
+ - Blocked: When process is blocked, because of some random reason.
+ - Dealloced: Process is already finished and dealloced.
+ */
 enum states {
     kStateUndefined = 0,
     kStateCreating = 1,
@@ -69,7 +80,14 @@ enum states {
 };
 
 
-// TODO: Comment about it.
+/**
+ Process struct
+ @param pid Process identifier.
+ @param total_time Total time that process will take to finish. Contains IO CPU time.
+ @param remaining_time Helper that bring to use remaining time to run process.
+ @param state Current process state, based on states struct.
+ @param io_device Process IO device, based on io_devices struct.
+ */
 typedef struct {
     int pid;
     int total_time;
