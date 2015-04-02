@@ -1,34 +1,34 @@
 /**
-
+ 
  LICENCE
-
-    The MIT License (MIT)
-
-    Copyright (c) 2015 Rafael Kellermann Streit
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-    THE SOFTWARE.
-
-
+ 
+ The MIT License (MIT)
+ 
+ Copyright (c) 2015 Rafael Kellermann Streit
+ 
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ 
+ The above copyright notice and this permission notice shall be included in
+ all copies or substantial portions of the Software.
+ 
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ THE SOFTWARE.
+ 
+ 
  README
-
-    This program will simulate how a basic computer works, with pre-allocated
-    processes and also how many time (in seconds) each CPU time will last.
+ 
+ This program will simulate how a basic computer works, with pre-allocated
+ processes and also how many time (in seconds) each CPU time will last.
  */
 
 
@@ -36,17 +36,20 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+// Rules
+#define MAX_LOOP_BY_PROCESS 5
+
 // IO Hard Drive
-#define kIOHardDriveTimeMin 200
-#define kIOHardDriveTimeMax 300
+static int kIOHardDriveTimeMin = 200;
+static int kIOHardDriveTimeMax = 300;
 
 // IO Video Drive
-#define kIOVideoDriveTimeMin 100
-#define kIOVideoDriveTimeMax 200
+static int kIOVideoDriveTimeMin = 100;
+static int kIOVideoDriveTimeMax = 200;
 
 // IO Printer
-#define kIOPrinterTimeMin 500
-#define kIOPrinterTimeMax 600
+static int kIOPrinterTimeMin = 500;
+static int kIOPrinterTimeMax = 600;
 
 
 /**
@@ -90,17 +93,40 @@ enum states {
  */
 typedef struct {
     int pid;
+    int state;
+    
     int total_time;
     int remaining_time;
-    int state;
-    int io_device;
+    int running_loop_time;
+    int current_status_time;
+    int io_time;
 } process;
 
 
-int main(int argc, char *argv[]) {
-    int processes_total;
-    int cpu_time;
+int clear();
 
+process *p_tmp;
+process *processes;
+
+int cpu_time_seconds;
+int cpu_time_running;
+int processes_total;
+int p_counter;
+
+int has_process_to_run();
+
+int update_process_status(int pid, int status);
+int update_processes_state_time();
+int move_next_ready_process_to_running();
+
+process *running_process();
+int processes_with_state();
+
+int count_running_process();
+int count_processes_with_state();
+
+
+int main(int argc, char *argv[]) {
     // Validates if user setted two required parameters:
     // - Number of processes created
     // - CPU time
@@ -109,54 +135,253 @@ int main(int argc, char *argv[]) {
         printf("Example: ./devlin 150 2\n");
         return 0;
     }
-
+    
     // Export arguments
     processes_total = atoi(argv[1]);
-    cpu_time = atoi(argv[2]);
-
-    printf("Process is starting with %d processes and %d CPU time.\n", processes_total, cpu_time);
-
-    // Create a new array of process, with the 
+    cpu_time_seconds = atoi(argv[2]);
+    
+    // Create a new array of process, with the
     // total size we will need while application runs
-    process *processes = malloc(processes_total * (sizeof *processes));
-
+    processes = malloc(processes_total * sizeof(p_tmp));
+    
     // OK, let's do the hard work... The first thing
     // we need to do is create process, set PID,
     // random a total time based on the specifications
     // and start with creating state.
-    // 
+    //
     // Then, we loop the application until process state
     // is ready, blocked or dealloced. When it happens,
     // we must move to the next process.
-    for (int i = 0; i < processes_total; i++) {
-        int io_time;
+    do {
+        clear();
 
-        process *p = &processes[i];
-
-        p->pid = i + 1;
-        p->total_time = (rand() % 200) + 100;
-        p->remaining_time = 100;
-        p->state = kStateRunning;
-        p->io_device = (rand() % 4);
-
+        // Random if should create a new process and if
+        // should request I/O in current running process.
+        int should_create_process = (rand() % 200) < 20 && p_counter <= processes_total;
+        int should_request_io = (rand() % 200) == 1;
+        
+        process *p_running = running_process();
+        
+        process (*p_ready) = malloc(processes_total * sizeof(p_tmp));
+        processes_with_state(p_ready, kStateReady);
+        
+        int p_running_count = count_running_process();
+        int p_ready_count = count_processes_with_state(processes, kStateReady);
+        int p_blocked_count = count_processes_with_state(processes, kStateBlocked);
+        int p_dealloced_count = count_processes_with_state(processes, kStateDealloced);
+        
+        printf("CPU Time: %d\n", cpu_time_running);
+        printf("Running: %d\n", p_running_count);
+        printf("Ready: %d\n", p_ready_count);
+        printf("Blocked: %d\n", p_blocked_count);
+        printf("Dealloced: %d\n", p_dealloced_count);
+        
+        if (p_running != NULL) {
+            p_running->running_loop_time = p_running->running_loop_time + 1;
+            p_running->total_time--;
+            
+            // Is there something running? For how long?
+            // Validates it and create a new one if needed.
+            // If don't, increase loop time of process.
+            if (p_running->running_loop_time == MAX_LOOP_BY_PROCESS) {
+                update_process_status(p_running->pid, kStateReady);
+                move_next_ready_process_to_running();
+            }
+            
+            printf("Current running PID: %d\n", p_running->pid);
+            printf("Current running CPU time: %d\n", p_running->running_loop_time);
+            
+            // Process ended? Let's kill & move to the next.
+            if (p_running->total_time <= 0 && p_running->state == kStateRunning) {
+                update_process_status(p_running->pid, kStateDealloced);
+                move_next_ready_process_to_running();
+            }
+            
+        // If there is not process running, let's get the first one
+        // and start running it.
+        } else {
+            printf("There's no process running. Let's get the first one from ReadyList (%d).\n", p_ready_count);
+            
+            if (p_ready_count > 0) {
+                update_process_status(p_ready[0].pid, kStateRunning);
+            }
+        }
+        
+        // Create a new process, if neeeded
+        if (should_create_process) {
+            process *new_process = &processes[p_counter];
+            p_counter++;
+            
+            new_process->pid = p_counter;
+            new_process->total_time = (rand() % 200) + 100;
+            new_process->remaining_time = new_process->total_time;
+            new_process->running_loop_time = 0;
+            new_process->current_status_time = 0;
+            new_process->io_time = 0;
+            new_process->state = kStateReady;
+        }
+        
         // Update process total time based on
         // IO device that was randomic choiced.
-        switch (p->io_device) {
-            case kIODeviceHardDrive:
-                io_time = (rand() % kIOHardDriveTimeMin) + kIOHardDriveTimeMax;
-                break;
-
-            case kIODeviceVideoDrive:
-                io_time = (rand() % kIOVideoDriveTimeMin) + kIOVideoDriveTimeMax;
-                break;
-
-            case kIODevicePrinter:
-                io_time = (rand() % kIOPrinterTimeMin) + kIOPrinterTimeMax;
-                break;
+        if (p_running != NULL && should_request_io) {
+            int io_time = 0;
+            
+            switch ((rand() % 3) + 1) {
+                case kIODeviceHardDrive:
+                    io_time = (rand() % 100) + kIOHardDriveTimeMin;
+                    break;
+                    
+                case kIODeviceVideoDrive:
+                    io_time = (rand() % 100) + kIOVideoDriveTimeMin;
+                    break;
+                    
+                case kIODevicePrinter:
+                    io_time = (rand() % 100) + kIOPrinterTimeMin;
+                    break;
+            }
+            
+            p_running->io_time = io_time;
+            update_process_status(p_running->pid, kStateBlocked);
+            move_next_ready_process_to_running();
+            
+            printf("Process %d was blocked for %d CPU cicles\n", p_running->pid, io_time);
         }
+        
+        update_processes_state_time();
 
-        p->total_time = p->total_time + io_time;
+        sleep(0);
+        cpu_time_running++;
+    } while (has_process_to_run());
+    
+    // Well done!
+    printf("Yeah, all process are done.\n");
+}
 
-        printf("Process %d created with total time %d\n", p->pid, p->total_time);
+
+#pragma mark - UI
+
+int clear() {
+    const char* CLEAR_SCREE_ANSI = "\e[1;1H\e[2J";
+    write(STDOUT_FILENO, CLEAR_SCREE_ANSI, 12);
+    return 1;
+}
+
+
+#pragma mark - Verifications
+
+int has_process_to_run() {
+    for (int i = 0; i < processes_total; i++) {
+        if (processes[i].state != kStateDealloced) {
+            return 1;
+        }
     }
+    
+    return sizeof(processes) == 0;
+}
+
+
+#pragma mark - Processes Update operations
+
+int update_process_status(int pid, int status) {
+    for (int i = 0; i < p_counter; i++) {
+        if (processes[i].pid == pid) {
+            processes[i].state = status;
+            processes[i].current_status_time = 0;
+            processes[i].running_loop_time = 0;
+            
+            printf("Process %d changed status to %d\n", pid, status);
+            
+            return 1;
+        }
+    }
+    
+    return 0;
+}
+
+int update_processes_state_time() {
+    for (int i = 0; i < p_counter; i++) {
+        processes[i].current_status_time++;
+        
+        // If process is currenlty blocked by IO
+        // let's reduce one cycle from it.
+        if (processes[i].io_time > 0) {
+            processes[i].io_time--;
+            
+            if (processes[i].io_time == 0) {
+                processes[i].state = kStateReady;
+            }
+        }
+    }
+    
+    // Sort all values by running time on state.
+    for (int j = 1; j < p_counter; j++) {
+        for (int k = 0; k < p_counter - j; k++) {
+            if (processes[k].current_status_time < processes[k + 1].current_status_time) {
+                process temp = processes[k];
+                processes[k] = processes[k + 1];
+                processes[k + 1] = temp;
+            }
+        }
+    }
+    
+    return 1;
+}
+
+int move_next_ready_process_to_running() {
+    for (int i = 0; i < p_counter; i++) {
+        processes[i].current_status_time++;
+    }
+    
+    return 1;
+}
+
+
+#pragma mark - Processes
+
+process *running_process() {
+    for (int i = 0; i < p_counter; i++) {
+        if (processes[i].state == kStateRunning) {
+            return &processes[i];
+        }
+    }
+    
+    return NULL;
+}
+
+int processes_with_state(process (*buffer), int state) {
+    int count = 0;
+    
+    for (int i = 0; i < p_counter; i++) {
+        if (processes[i].state == state) {
+            buffer[count] = processes[i];
+            count++;
+        }
+    }
+    
+    return 1;
+};
+
+
+#pragma mark - Counters
+
+int count_running_process() {
+    for (int i = 0; i < p_counter; i++) {
+        if (processes[i].state == kStateRunning) {
+            return 1;
+        }
+    }
+    
+    return 0;
+}
+
+int count_processes_with_state(process *processes, int state) {
+    int count = 0;
+    
+    for (int i = 0; i < p_counter; i++) {
+        if (processes[i].state == state) {
+            count++;
+        }
+    }
+    
+    return count;
 }
