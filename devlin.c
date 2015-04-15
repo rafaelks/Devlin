@@ -118,17 +118,65 @@ int cpu_time_running;
 int processes_total;
 int p_counter;
 
+/**
+  @return Returns if have process to run.
+  */
 int has_process_to_run();
 
+/**
+  @param pid
+    PID of the process.
+
+  @param status
+    New status of process.
+  */
 int update_process_status(int pid, int status);
+
+/**
+  Update all processes state time
+  */
 int update_processes_state_time();
+
+/**
+  Get the next object in the ready list
+  and change status to Running.
+
+  @return True or false if some process changed to running state.
+  */
 int move_next_ready_process_to_running();
 
+/**
+  @return Return currently running process. In case we don't have one,
+    it will return NULL.
+  */
 process *running_process();
-int processes_with_state();
 
+/**
+  @param process
+    Process pointer.
+
+  @param state
+    New state of the process.
+
+  @return True or false if process state was changed.
+  */
+int processes_with_state(process (*buffer), int state);
+
+/**
+  @return Return the count of running processes.
+  */
 int count_running_process();
-int count_processes_with_state();
+
+/**
+  @param processes
+    Processes list pointer.
+
+  @param state
+    State to filter.
+
+  @return Counter of process in the state.
+  */
+int count_processes_with_state(process *processes, int state);
 
 
 int main(int argc, char *argv[]) {
