@@ -35,9 +35,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
 
 // Rules
-#define MAX_LOOP_BY_PROCESS 5
+#define MAX_LOOP_BY_PROCESS 50
 
 // IO Hard Drive
 static int kIOHardDriveTimeMin = 200;
@@ -103,6 +104,10 @@ typedef struct {
 } process;
 
 
+// Timer variables, to know how much time
+// the program spent running
+clock_t begin, end;
+
 int clear();
 
 process *p_tmp;
@@ -127,6 +132,9 @@ int count_processes_with_state();
 
 
 int main(int argc, char *argv[]) {
+    // Start timer
+    begin = clock();
+
     // Validates if user setted two required parameters:
     // - Number of processes created
     // - CPU time
@@ -135,15 +143,15 @@ int main(int argc, char *argv[]) {
         printf("Example: ./devlin 150 2\n");
         return 0;
     }
-    
+
     // Export arguments
     processes_total = atoi(argv[1]);
     cpu_time_seconds = atoi(argv[2]);
-    
+
     // Create a new array of process, with the
     // total size we will need while application runs
-    processes = malloc(processes_total * sizeof(p_tmp));
-    
+    processes = malloc(processes_total * sizeof(process));
+
     // OK, let's do the hard work... The first thing
     // we need to do is create process, set PID,
     // random a total time based on the specifications
@@ -159,17 +167,17 @@ int main(int argc, char *argv[]) {
         // should request I/O in current running process.
         int should_create_process = (rand() % 200) < 20 && p_counter <= processes_total;
         int should_request_io = (rand() % 200) == 1;
-        
+
         process *p_running = running_process();
-        
-        process (*p_ready) = malloc(processes_total * sizeof(p_tmp));
+
+        process *p_ready = malloc(processes_total * sizeof(p_tmp));
         processes_with_state(p_ready, kStateReady);
-        
+
         int p_running_count = count_running_process();
         int p_ready_count = count_processes_with_state(processes, kStateReady);
         int p_blocked_count = count_processes_with_state(processes, kStateBlocked);
         int p_dealloced_count = count_processes_with_state(processes, kStateDealloced);
-        
+
         printf("CPU Time: %d\n", cpu_time_running);
         printf("Running: %d\n", p_running_count);
         printf("Ready: %d\n", p_ready_count);
@@ -179,7 +187,13 @@ int main(int argc, char *argv[]) {
         if (p_running != NULL) {
             p_running->running_loop_time = p_running->running_loop_time + 1;
             p_running->total_time--;
-            
+
+            // Process ended? Let's kill & move to the next.
+            if (p_running->total_time <= 0 && p_running->state == kStateRunning) {
+                update_process_status(p_running->pid, kStateDealloced);
+                move_next_ready_process_to_running();
+            }
+
             // Is there something running? For how long?
             // Validates it and create a new one if needed.
             // If don't, increase loop time of process.
@@ -187,21 +201,17 @@ int main(int argc, char *argv[]) {
                 update_process_status(p_running->pid, kStateReady);
                 move_next_ready_process_to_running();
             }
-            
+
             printf("Current running PID: %d\n", p_running->pid);
             printf("Current running CPU time: %d\n", p_running->running_loop_time);
-            
-            // Process ended? Let's kill & move to the next.
-            if (p_running->total_time <= 0 && p_running->state == kStateRunning) {
-                update_process_status(p_running->pid, kStateDealloced);
-                move_next_ready_process_to_running();
-            }
-            
+
         // If there is not process running, let's get the first one
         // and start running it.
         } else {
             printf("There's no process running. Let's get the first one from ReadyList (%d).\n", p_ready_count);
-            
+            printf("There's %d processes created.\n", p_counter);
+            printf("We still have %d processes to create.\n", processes_total - p_counter);
+
             if (p_ready_count > 0) {
                 update_process_status(p_ready[0].pid, kStateRunning);
             }
@@ -211,7 +221,7 @@ int main(int argc, char *argv[]) {
         if (should_create_process) {
             process *new_process = &processes[p_counter];
             p_counter++;
-            
+
             new_process->pid = p_counter;
             new_process->total_time = (rand() % 200) + 100;
             new_process->remaining_time = new_process->total_time;
@@ -243,17 +253,21 @@ int main(int argc, char *argv[]) {
             p_running->io_time = io_time;
             update_process_status(p_running->pid, kStateBlocked);
             move_next_ready_process_to_running();
-            
+
             printf("Process %d was blocked for %d CPU cicles\n", p_running->pid, io_time);
         }
-        
+
         update_processes_state_time();
 
         sleep(0);
         cpu_time_running++;
     } while (has_process_to_run());
-    
+
+    // End timer
+    end = clock();
+
     // Well done!
+    printf("Time running: %.02f seconds.\n", (double)(end - begin) / CLOCKS_PER_SEC);
     printf("Yeah, all process are done.\n");
 }
 
