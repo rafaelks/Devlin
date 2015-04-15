@@ -259,7 +259,7 @@ int main(int argc, char *argv[]) {
 
         update_processes_state_time();
 
-        sleep(0);
+        sleep(cpu_time_seconds);
         cpu_time_running++;
     } while (has_process_to_run());
 
