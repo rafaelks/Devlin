@@ -213,7 +213,7 @@ int main(int argc, char *argv[]) {
 
         // Random if should create a new process and if
         // should request I/O in current running process.
-        int should_create_process = (rand() % 200) < 20 && p_counter <= processes_total;
+        int should_create_process = (rand() % 200) < 20 && p_counter < processes_total;
         int should_request_io = (rand() % 200) == 1;
 
         process *p_running = running_process();
