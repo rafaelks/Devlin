@@ -193,8 +193,13 @@ int main(int argc, char *argv[]) {
     }
 
     // Export arguments
-    processes_total = atoi(argv[1]);
-    cpu_time_seconds = atoi(argv[2]);
+    if (argv[1][1] == 'n') {
+        sscanf(argv[1], "-n%d", &processes_total);
+        sscanf(argv[2], "-t%d", &cpu_time_seconds);
+    } else {
+        sscanf(argv[2], "-n%d", &processes_total);
+        sscanf(argv[1], "-t%d", &cpu_time_seconds);
+    }
 
     // Create a new array of process, with the
     // total size we will need while application runs
