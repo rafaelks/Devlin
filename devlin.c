@@ -342,8 +342,8 @@ int main(int argc, char *argv[]) {
     printf("Time running: %.02f seconds.\n", (double)(end - begin) / CLOCKS_PER_SEC);
     printf("Total CPU Time: %d\n", cpu_time_running);
     printf("Total processes: %d\n", p_counter);
-    printf("Average process time in running state: %.02f\n", average_time_in_state(kStateRunning));
-    printf("Average process time in ready state: %.02f\n", average_time_in_state(kStateReady));
+    printf("Average process time in \x1B[32mrunning\033[0m state: %.02f\n", average_time_in_state(kStateRunning));
+    printf("Average process time in \x1B[34mready\033[0m state: %.02f\n", average_time_in_state(kStateReady));
     printf("Total process in each state:\n");
     printf("- Ready: %d\n", count_in_state(kStateReady));
     printf("- Running: %d\n", count_in_state(kStateRunning));
