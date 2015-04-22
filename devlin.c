@@ -80,7 +80,7 @@ enum states {
     kStateReady = 2,
     kStateRunning = 3,
     kStateBlocked = 4,
-    kStateDealloced = 5
+    kStateDeallocated = 5
 };
 
 
@@ -101,6 +101,16 @@ typedef struct {
     int running_loop_time;
     int current_status_time;
     int io_time;
+
+    // Time metrics
+    int running_time;
+    int ready_time;
+
+    // State metrics
+    int in_ready_state;
+    int in_running_state;
+    int in_blocked_state;
+    int in_deallocated_state;
 } process;
 
 
@@ -179,6 +189,10 @@ int count_running_process();
 int count_processes_with_state(process *processes, int state);
 
 
+double average_time_in_state(int state);
+int count_in_state(int state);
+
+
 int main(int argc, char *argv[]) {
     // Start timer
     begin = clock();
@@ -229,13 +243,13 @@ int main(int argc, char *argv[]) {
         int p_running_count = count_running_process();
         int p_ready_count = count_processes_with_state(processes, kStateReady);
         int p_blocked_count = count_processes_with_state(processes, kStateBlocked);
-        int p_dealloced_count = count_processes_with_state(processes, kStateDealloced);
+        int p_deallocated_count = count_processes_with_state(processes, kStateDeallocated);
 
         printf("CPU Time: %d\n", cpu_time_running);
         printf("Running: %d\n", p_running_count);
         printf("Ready: %d\n", p_ready_count);
         printf("Blocked: %d\n", p_blocked_count);
-        printf("Dealloced: %d\n", p_dealloced_count);
+        printf("Deallocated: %d\n", p_deallocated_count);
         
         if (p_running != NULL) {
             p_running->running_loop_time = p_running->running_loop_time + 1;
@@ -243,7 +257,7 @@ int main(int argc, char *argv[]) {
 
             // Process ended? Let's kill & move to the next.
             if (p_running->total_time <= 0 && p_running->state == kStateRunning) {
-                update_process_status(p_running->pid, kStateDealloced);
+                update_process_status(p_running->pid, kStateDeallocated);
                 move_next_ready_process_to_running();
             }
 
@@ -320,17 +334,28 @@ int main(int argc, char *argv[]) {
     end = clock();
 
     // Well done!
+    clear();
+
+    printf("===================\n");
+
+    printf("Process finished.\n");
     printf("Time running: %.02f seconds.\n", (double)(end - begin) / CLOCKS_PER_SEC);
-    printf("Yeah, all process are done.\n");
+    printf("Total CPU Time: %d\n", cpu_time_running);
+    printf("Total processes: %d\n", p_counter);
+    printf("Average process time in running state: %.02f\n", average_time_in_state(kStateRunning));
+    printf("Average process time in ready state: %.02f\n", average_time_in_state(kStateReady));
+    printf("Total process in each state:\n");
+    printf("- Ready: %d\n", count_in_state(kStateReady));
+    printf("- Running: %d\n", count_in_state(kStateRunning));
+    printf("- Blocked: %d\n", count_in_state(kStateBlocked));
+    printf("- Deallocated: %d\n", count_in_state(kStateDeallocated));
 }
 
 
 #pragma mark - UI
 
 int clear() {
-    const char* CLEAR_SCREE_ANSI = "\e[1;1H\e[2J";
-    write(STDOUT_FILENO, CLEAR_SCREE_ANSI, 12);
-    return 1;
+    return printf("\033[2J\033[1;1H");
 }
 
 
@@ -338,7 +363,7 @@ int clear() {
 
 int has_process_to_run() {
     for (int i = 0; i < processes_total; i++) {
-        if (processes[i].state != kStateDealloced) {
+        if (processes[i].state != kStateDeallocated) {
             return 1;
         }
     }
@@ -355,7 +380,25 @@ int update_process_status(int pid, int status) {
             processes[i].state = status;
             processes[i].current_status_time = 0;
             processes[i].running_loop_time = 0;
-            
+
+            switch (status) {
+                case kStateReady:
+                    processes[i].in_ready_state = 1;
+                    break;
+
+                case kStateRunning:
+                    processes[i].in_running_state = 1;
+                    break;
+
+                case kStateBlocked:
+                    processes[i].in_blocked_state = 1;
+                    break;
+
+                case kStateDeallocated:
+                    processes[i].in_deallocated_state = 1;
+                    break;
+            }
+
             printf("Process %d changed status to %d\n", pid, status);
             
             return 1;
@@ -368,7 +411,15 @@ int update_process_status(int pid, int status) {
 int update_processes_state_time() {
     for (int i = 0; i < p_counter; i++) {
         processes[i].current_status_time++;
-        
+
+        if (processes[i].state == kStateRunning) {
+            processes[i].running_time++;
+        }
+
+        if (processes[i].state == kStateReady) {
+            processes[i].ready_time++;
+        }
+
         // If process is currenlty blocked by IO
         // let's reduce one cycle from it.
         if (processes[i].io_time > 0) {
@@ -443,12 +494,55 @@ int count_running_process() {
 
 int count_processes_with_state(process *processes, int state) {
     int count = 0;
-    
+
     for (int i = 0; i < p_counter; i++) {
         if (processes[i].state == state) {
             count++;
         }
     }
-    
+
     return count;
+}
+
+
+#pragma mark - Metrics
+
+double average_time_in_state(int state) {
+    long total = 0;
+
+    for (int i = 0; i < p_counter; i++) {
+        if (state == kStateRunning) {
+            total += processes[i].running_time;
+        }
+
+        if (state == kStateReady) {
+            total += processes[i].ready_time;
+        }
+    }
+
+    return total / p_counter;
+}
+
+int count_in_state(int state) {
+    int total = 0;
+
+    for (int i = 0; i < p_counter; i++) {
+        if (state == kStateReady && processes[i].in_ready_state) {
+            total += 1;
+        }
+
+        if (state == kStateRunning && processes[i].in_running_state) {
+            total += 1;
+        }
+
+        if (state == kStateBlocked && processes[i].in_blocked_state) {
+            total += 1;
+        }
+
+        if (state == kStateDeallocated && processes[i].in_deallocated_state) {
+            total += 1;
+        }
+    }
+
+    return total;
 }
