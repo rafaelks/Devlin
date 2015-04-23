@@ -1,34 +1,34 @@
 /**
  
- LICENCE
+  LICENCE
  
- The MIT License (MIT)
+  The MIT License (MIT)
  
- Copyright (c) 2015 Rafael Kellermann Streit
+  Copyright (c) 2015 Rafael Kellermann Streit
  
- Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights
- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- copies of the Software, and to permit persons to whom the Software is
- furnished to do so, subject to the following conditions:
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
  
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
  
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- THE SOFTWARE.
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.
  
+
+  README
  
- README
- 
- This program will simulate how a basic computer works, with pre-allocated
- processes and also how many time (in seconds) each CPU time will last.
+  This program will simulate how a basic computer works, with pre-allocated
+  processes and also how many time (in seconds) each CPU time will last.
  */
 
 
@@ -54,8 +54,8 @@ static int kIOPrinterTimeMax = 600;
 
 
 /**
- IO devices
- Hard Drive, Video Drive & Printer.
+  IO devices
+  Hard Drive, Video Drive & Printer.
  */
 enum io_devices {
     kIODeviceNone = 0,
@@ -66,13 +66,13 @@ enum io_devices {
 
 
 /**
- Process states
+  Process states
  
- - Creating: When process is being created.
- - Ready: It's ready to be executed, on queue.
- - Running: Process it's actually running.
- - Blocked: When process is blocked, because of some random reason.
- - Dealloced: Process is already finished and dealloced.
+  - Creating: When process is being created.
+  - Ready: It's ready to be executed, on queue.
+  - Running: Process it's actually running.
+  - Blocked: When process is blocked, because of some random reason.
+  - Dealloced: Process is already finished and dealloced.
  */
 enum states {
     kStateUndefined = 0,
@@ -85,12 +85,22 @@ enum states {
 
 
 /**
- Process struct
- @param pid Process identifier.
- @param total_time Total time that process will take to finish. Contains IO CPU time.
- @param remaining_time Helper that bring to use remaining time to run process.
- @param state Current process state, based on states struct.
- @param io_device Process IO device, based on io_devices struct.
+  Process struct
+
+  @param pid
+    Process identifier.
+
+  @param total_time
+    Total time that process will take to finish. Contains IO CPU time.
+
+  @param remaining_time
+    Helper that bring to use remaining time to run process.
+
+  @param state
+    Current process state, based on states struct.
+
+  @param io_device
+    Process IO device, based on io_devices struct.
  */
 typedef struct {
     int pid;
@@ -188,8 +198,20 @@ int count_running_process();
   */
 int count_processes_with_state(process *processes, int state);
 
+/**
+  @param state
+    State process to calculate average time.
 
+  @return Average time spent in state parameter.
+ */
 double average_time_in_state(int state);
+
+/**
+  @param state
+    State process to calculate.
+
+  @return Total process that was in state parameter.
+ */
 int count_in_state(int state);
 
 
@@ -446,10 +468,27 @@ int update_processes_state_time() {
 }
 
 int move_next_ready_process_to_running() {
+    process *p_ready = NULL;
+
     for (int i = 0; i < p_counter; i++) {
         processes[i].current_status_time++;
+
+        if (processes[i].state == kStateReady) {
+            if (p_ready != NULL) {
+                if (processes[i].current_status_time > p_ready->current_status_time) {
+                    p_ready = &processes[i];
+                }
+            } else {
+                p_ready = &processes[i];
+            }
+        }
     }
-    
+
+    if (p_ready) {
+        p_ready->state = kStateRunning;
+        p_ready->in_running_state = 1;
+    }
+
     return 1;
 }
 
