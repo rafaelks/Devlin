@@ -237,6 +237,11 @@ int main(int argc, char *argv[]) {
         sscanf(argv[1], "-t%d", &cpu_time_seconds);
     }
 
+    if (processes_total < 5) {
+        printf("You need at least 5 processes to simulate it.\n");
+        return 0;
+    }
+
     // Create a new array of process, with the
     // total size we will need while application runs
     processes = malloc(processes_total * sizeof(process));
