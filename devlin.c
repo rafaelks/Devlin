@@ -133,6 +133,7 @@ int clear();
 process *p_tmp;
 process *processes;
 
+int removed_from_running;
 int cpu_time_seconds;
 int cpu_time_running;
 int processes_total;
@@ -292,6 +293,7 @@ int main(int argc, char *argv[]) {
             // Validates it and create a new one if needed.
             // If don't, increase loop time of process.
             if (p_running->running_loop_time == MAX_LOOP_BY_PROCESS) {
+                removed_from_running++;
                 update_process_status(p_running->pid, kStateReady);
                 move_next_ready_process_to_running();
             }
@@ -347,6 +349,7 @@ int main(int argc, char *argv[]) {
             p_running->io_time = io_time;
             update_process_status(p_running->pid, kStateBlocked);
             move_next_ready_process_to_running();
+            removed_from_running++;
 
             printf("Process %d was blocked for %d CPU cicles\n", p_running->pid, io_time);
         }
@@ -371,6 +374,7 @@ int main(int argc, char *argv[]) {
     printf("Total processes: %d\n", p_counter);
     printf("Average process time in \x1B[32mrunning\033[0m state: %.02f\n", average_time_in_state(kStateRunning));
     printf("Average process time in \x1B[34mready\033[0m state: %.02f\n", average_time_in_state(kStateReady));
+    printf("Moved from \x1B[32mrunning\033[0m to \x1B[34mready\033[0m state: %.d\n", removed_from_running);
     printf("Total process in each state:\n");
     printf("- Ready: %d\n", count_in_state(kStateReady));
     printf("- Running: %d\n", count_in_state(kStateRunning));
