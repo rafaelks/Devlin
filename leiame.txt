@@ -1,0 +1,6 @@
+Integrantes:
+  Nome: Rafael Kellermann Streit
+  E-mail: rafaelkellermann@gmail.com
+  Matrícula: 1100636
+
+Instruções para execução: estão detalhadas no arquivo README.pdf.

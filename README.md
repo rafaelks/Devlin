@@ -2,6 +2,7 @@
 *Computer processor simulator in C*
 
 This project was developed to simulate how CPU deal with processes in a basic level. Is a mono-processor that receives two parameters:
+
 - **-n**: The number o processes to be simulated
 - **-t**: The time to each cycle of CPU (in seconds)
 
